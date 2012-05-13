@@ -401,7 +401,7 @@ def document_fix(dom):
     for i in images:
         files = i.getElementsByTagName('init_from')
         for f in files:
-            fname = f.childNodes[0].nodeValue.tolower()
+            fname = f.childNodes[0].nodeValue.lower()
             if fname[-3:] != 'jpg' and fname[-4:] != 'jpeg' and fname[-3:] != 'png' and fname[-3:] != 'bmp' and fname[-3:] != 'gif':
                 print ('Warning: image file %s may not be support on PSS' % fname)
     
