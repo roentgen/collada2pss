@@ -68,7 +68,7 @@ def store_bone_transform(n, mat, trans, rot, scale):
 class RuleParser:
 
     def parse(self, str):
-        r = re.compile('[ 	　]+|\+|>|,|[\.#&_\-a-zA-Z0-9%:]+|\[|\]|~=|\|=|=|\"|\'|\*|\\\\')
+        r = re.compile('[     　]+|\+|>|,|[\.#&_\-a-zA-Z0-9%:]+|\[|\]|~=|\|=|=|\"|\'|\*|\\\\')
         e = re.compile('[ 	　]+')
         elm = re.compile('[a-zA-Z0-9:\*\.#]+')
         matchs = iter(r.findall(str))
@@ -407,6 +407,13 @@ def document_fix(dom):
     
     # PSS Beta BasicModel: a mesh must have at least one material 
     # check all meshes if it has a material
+    polys = []
+    recipes = [{'rule':'polylist', 'func':lambda x: polys.append(x)}]
+    do_recipe(recipes, dom.getElementsByTagName('library_geometries')[0])
+    for p in polys:
+        if not p.hasAttribute('material'):
+            p.setAttribute('material', 'Material0')
+
     meshes = []
     recipes = [{'rule':'instance_controller', 'func':lambda x: meshes.append(x)}, {'rule':'instance_geometry', 'func':lambda x: meshes.append(x)}]
     do_recipe(recipes, dom.getElementsByTagName('visual_scene')[0])
@@ -425,9 +432,23 @@ def document_fix(dom):
             bindmat.appendChild(tec)
             m.appendChild(bindmat)
 
+            
+
     if need_dummy_material:
         print('Warning: create dummy material')
-        libmats = dom.getElementsByTagName('material')
+        libmats = dom.getElementsByTagName('library_materials')
+        if len(libmats) == 0 :
+            libmat = dom.createElement('library_materials')
+            dom.getElementsByTagName('COLLADA')[0].appendChild(libmat)
+        else:
+            libmat = libmats[0]
+        mat = dom.createElement('material')
+        mat.setAttribute('id', 'dummy_material')
+        mat.setAttribute('name', 'dummy_material')
+        insfx = dom.createElement('instance_effect')
+        insfx.setAttribute('url', '#dummy_material-fx')
+        mat.appendChild(insfx)
+        libmat.appendChild(mat)
 
         # create dummy material and effect as lambert
         mat = dom.createElement('material')
@@ -451,7 +472,12 @@ def document_fix(dom):
         pcommon = dom.createElement('profile_COMMON')
         pcommon.appendChild(tec)
         fx.appendChild(pcommon)
-        libfx = dom.getElementsByTagName('library_effects')[0]
+        libfxs = dom.getElementsByTagName('library_effects')
+        if len(libfxs) == 0 :
+            libfx = dom.createElement('library_effects')
+            dom.getElementsByTagName('COLLADA')[0].appendChild(libfx)
+        else:
+            libfx = libfxs[0]
         libfx.appendChild(fx)
             
 
@@ -770,8 +796,3 @@ dom.writexml(out)
 out.close()
 
 dom.unlink()
-
-
-
-
-
