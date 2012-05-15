@@ -12,6 +12,7 @@
 #
 # changes:
 # May 12, 2012 ver 0.1 [Beta Release]
+# May 15, 2012 fixed an axis-order to rotation of bone
 #
 import os
 import re
@@ -44,20 +45,23 @@ def store_bone_transform(n, mat, trans, rot, scale):
     nt.appendChild(dom.createTextNode(vec3_to_str(trans)))
     n.insertBefore(nt, mat)
     
-    nrx = dom.createElement('rotate')
-    nrx.setAttribute('sid', 'rotateX')
-    nrx.appendChild(dom.createTextNode('1 0 0 %f' % rot[0]))
-    n.insertBefore(nrx, mat)
+    # PSS ModelConverter will only accept Z-Y-X axis ordering to rotate.
+    # if X/Y/Z ordering will be passed, then ModelConverter.exe should produce a broken quaternion.
+    # the nodes of order is Z, Y, Z, not X/Y/Z. the order MUST be used!
+    nrz = dom.createElement('rotate')
+    nrz.setAttribute('sid', 'rotateZ')
+    nrz.appendChild(dom.createTextNode('0 0 1 %f' % rot[2]))
+    n.insertBefore(nrz, mat)
     
     nry = dom.createElement('rotate')
     nry.setAttribute('sid', 'rotateY')
     nry.appendChild(dom.createTextNode('0 1 0 %f' % rot[1]))
     n.insertBefore(nry, mat)
-    
-    nrz = dom.createElement('rotate')
-    nrz.setAttribute('sid', 'rotateZ')
-    nrz.appendChild(dom.createTextNode('0 0 1 %f' % rot[2]))
-    n.insertBefore(nrz, mat)
+
+    nrx = dom.createElement('rotate')
+    nrx.setAttribute('sid', 'rotateX')
+    nrx.appendChild(dom.createTextNode('1 0 0 %f' % rot[0]))
+    n.insertBefore(nrx, mat)
     
     ns = dom.createElement('scale')
     ns.setAttribute('sid', 'scale')
