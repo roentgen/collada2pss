@@ -21,19 +21,19 @@ import math
 import xml.dom.minidom
 from xml.dom.minidom import parse
 
+def options (v):
+    options.do_bind_shape = False
+     
+
 def load_matrix4x4(str) :
     ms = []
-    mo = map(lambda x: x != '' and ms.append(float(x)), re.compile('\s').split(str))
-    for mo_ in mo: pass
+    for i in map(lambda x: x != '' and ms.append(float(x)), re.compile('\s').split(str)) : pass
     matricis = []
     count = len(ms) / 16
     matricis = []
     for i in range(int(count)):
         m = Matrix()
-        m[0][0], m[1][0], m[2][0], m[3][0] = float(ms[0]), float(ms[1]), float(ms[2]), float(ms[3])
-        m[0][1], m[1][1], m[2][1], m[3][1] = float(ms[4]), float(ms[5]), float(ms[6]), float(ms[7])
-        m[0][2], m[1][2], m[2][2], m[3][2] = float(ms[8]), float(ms[9]), float(ms[10]), float(ms[11])
-        m[0][3], m[1][3], m[2][3], m[3][3] = float(ms[12]), float(ms[13]), float(ms[14]), float(ms[15])
+        m[0][0], m[1][0], m[2][0], m[3][0], m[0][1], m[1][1], m[2][1], m[3][1], m[0][2], m[1][2], m[2][2], m[3][2], m[0][3], m[1][3], m[2][3], m[3][3] = float(ms[0]), float(ms[1]), float(ms[2]), float(ms[3]), float(ms[4]), float(ms[5]), float(ms[6]), float(ms[7]), float(ms[8]), float(ms[9]), float(ms[10]), float(ms[11]), float(ms[12]), float(ms[13]), float(ms[14]), float(ms[15])
         m.transpose()
         matricis.append(m)
         ms = ms[16:]
@@ -485,8 +485,13 @@ def document_fix(dom):
         libfx.appendChild(fx)
             
 
-vesion = 0.1
-argv = os.getenv('args').split(' ')
+version = 0.1
+argv_ = re.compile('[# ]+').split(os.getenv('args'))
+argv = []
+for i in argv_:
+    if i != '':
+        argv.append(i)
+
 print(argv)
 argc = len(argv)
 
@@ -494,11 +499,26 @@ if (argc < 2):
     print('to_pss usage: %s input output' % argv[0])
     exit()
 
+options(argv)
+
 infile = argv[0]
 outfile = argv[1]
 
 def vec3_to_str(v):
     return '%(x)f %(y)f %(z)f' % {'x':v[0], 'y':v[1], 'z':v[2]}
+
+def store_matrix4x4(m):
+    c = len(m)
+    s = ''
+    for i in range(c):
+        mat = m[i]
+        mat.transpose()
+        s += '%(m00)f %(m10)f %(m20)f %(m30)f %(m01)f %(m11)f %(m21)f %(m31)f %(m02)f %(m12)f %(m22)f %(m32)f %(m03)f %(m13)f %(m23)f %(m33)f \n' % \
+        {'m00':mat[0][0], 'm10':mat[1][0], 'm20':mat[2][0], 'm30':mat[3][0], \
+         'm01':mat[0][1], 'm11':mat[1][1], 'm21':mat[2][1], 'm31':mat[3][1], \
+         'm02':mat[0][2], 'm12':mat[1][2], 'm22':mat[2][2], 'm32':mat[3][2], \
+         'm03':mat[0][3], 'm13':mat[1][3], 'm23':mat[2][3], 'm33':mat[3][3]}
+    return s
 
 def traverse_node(n):
     if (n.nodeType != xml.dom.minidom.Node.ELEMENT_NODE):
@@ -585,7 +605,7 @@ def store_single_channel_source(id, data, tag='-output', param_name='ANGLE', par
     tec.appendChild(acc)
     src.appendChild(tec)
     return src
-    
+   
 def store_single_channel_animation(id, org, data, tag='_rotateX', param_name='ANGLE', param_type='float'):
     srcbase = id[:id.rfind('_')]
     anim = dom.createElement('animation')
@@ -621,8 +641,10 @@ def store_single_channel_animation(id, org, data, tag='_rotateX', param_name='AN
     float_array.setAttribute('id', srcbase + tag + '-input-array')
     float_array.setAttribute('count', input_org.attributes['count'].value)
     float_array.appendChild(dom.createTextNode(input_org.childNodes[0].nodeValue))
-
+    input.appendChild(dom.createTextNode('\n'))
     input.appendChild(float_array)
+    input.appendChild(dom.createTextNode('\n'))
+
     accessor = dom.createElement('accessor')
     accessor.setAttribute('source', '#' + srcbase + tag + '-input-array')
     accessor.setAttribute('count', input_org.attributes['count'].value)
@@ -636,9 +658,12 @@ def store_single_channel_animation(id, org, data, tag='_rotateX', param_name='AN
     tec.appendChild(accessor)
     input.appendChild(tec)
     anim.appendChild(input)
+    anim.appendChild(dom.createTextNode('\n'))
 
     out = store_single_channel_source(id, data, tag=tag+'-output', param_name=param_name, stride=stride)
+    anim.appendChild(dom.createTextNode('\n'))
     anim.appendChild(out)
+    anim.appendChild(dom.createTextNode('\n'))
     
 #    print ('output:', anim.toprettyxml())
 
@@ -661,7 +686,10 @@ def store_single_channel_animation(id, org, data, tag='_rotateX', param_name='AN
     tec = dom.createElement('technique_common')
     tec.appendChild(accessor)
     interp.appendChild(tec)
+    anim.appendChild(dom.createTextNode('\n'))
     anim.appendChild(interp)
+    anim.appendChild(dom.createTextNode('\n'))
+
     # sampler
     sampler = dom.createElement('sampler')
     sampler.setAttribute('id', srcbase + tag + '-sampler')
@@ -678,6 +706,7 @@ def store_single_channel_animation(id, org, data, tag='_rotateX', param_name='AN
     sem.setAttribute('source', '#' + srcbase + tag + '-interpolation')
     sampler.appendChild(sem)
     anim.appendChild(sampler)
+    anim.appendChild(dom.createTextNode('\n'))
 
 #    print ('sema:', anim.toprettyxml())
 
@@ -689,10 +718,12 @@ def store_single_channel_animation(id, org, data, tag='_rotateX', param_name='AN
 
     if tag == '_rotateX':
         channeltag = 'rotateX.ANGLE'
+#        channeltag = 'rotateZ.ANGLE'
     elif tag == '_rotateY':
         channeltag = 'rotateY.ANGLE'
     elif tag == '_rotateZ':
         channeltag = 'rotateZ.ANGLE'
+#        channeltag = 'rotateX.ANGLE'
     elif tag == '_translate':
         channeltag = 'translate'
     elif tag == '_scale':
@@ -700,14 +731,69 @@ def store_single_channel_animation(id, org, data, tag='_rotateX', param_name='AN
 #    print ('target:', target + '/' + channeltag)
     channel.setAttribute('target', target + '/' + channeltag)
     anim.appendChild(channel)
+    input.appendChild(dom.createTextNode('\n'))
+
 #    print ('last:', anim.toprettyxml())
     return anim
+
+controllers = []
+def controller_handler(c):
+    def controller():
+        pass
+    controller.bind_shape_matrix = Matrix.Identity(4)
+    controller.id = c.attributes['id']
+    binds = c.getElementsByTagName('bind_shape_matrix')
+    if len(binds) : 
+        m = load_matrix4x4(binds[0].childNodes[0].nodeValue)[0]
+        # strip scale element
+        scale = m.inverted().decompose()[2]
+        inv_scale = Matrix.Identity(4)
+        inv_scale[0][0] = scale[0]
+        inv_scale[1][1] = scale[1]
+        inv_scale[2][2] = scale[2]
+        m = inv_scale * m
+        controller.bind_shape_matrix = m
+        
+    
+    # find pose matricis to be use as bone-offset-matricis
+    poses = []
+    recipes = [{'rule':'input[semantic=INV_BIND_MATRIX]', 'func': lambda x: poses.append(x.attributes['source'].value.strip('#'))}]
+    do_recipe(recipes, c)
+    boneoffsets = []
+    for p in poses:
+        recipes = [{'rule':'source[id=%s] float_array' % p, 'func': lambda x: boneoffsets.append(x)}]
+        do_recipe(recipes, c)
+    matricis = []
+    print('bind_shape_matrix:\n', controller.bind_shape_matrix)
+    inv_binds = controller.bind_shape_matrix.inverted()
+    for b in boneoffsets:
+        matricis.extend(load_matrix4x4(b.childNodes[0].nodeValue))
+        num = len(matricis)
+        for i in range(num):
+            # fixed matrix that converts a local system to the world system.
+            #      matrix = bind^-1 * pose * bone
+            # multiplying each bone local matrix will be done runtime.
+            print ('pose:\n', matricis[i])
+            matricis[i] = matricis[i] * inv_scale
+            print ('inv_binds:\n', inv_binds)
+            print ('matrix:\n', matricis[i])
+        b.childNodes[0].nodeValue = store_matrix4x4(matricis)
+        
+    controllers.append(controller)
+    return 
+    
 
 dom = parse(infile)
 
 
 # fix document errors
 document_fix(dom)
+
+if options.do_bind_shape:
+    ctrls = []
+    recipes = [{'rule':'controller', 'func':lambda x: ctrls.append(x)}]
+    do_recipe(recipes, dom)
+    for i in map(controller_handler, ctrls): pass
 
 # convert bone matrix
 vs = dom.getElementsByTagName('visual_scene')[0]
@@ -751,13 +837,13 @@ if len(libanims):
             floats = []
             for f in floats_rad:
                 floats.append(math.degrees(f))
-            
-            # rotateX channel
+
+            # rotateZ channel
             data = []
             for i in range(len(floats)):
-                if i % 3 == 0: data.append(floats[i])
-            anim_rx = store_single_channel_animation(srcid, anim, data, tag='_rotateX', param_name='ANGLE')
-            new_anims.append(anim_rx)
+                if i % 3 == 2: data.append(floats[i])
+            anim_rz = store_single_channel_animation(srcid, anim, data, tag='_rotateZ', param_name='ANGLE')
+            new_anims.append(anim_rz)
 
             # rotateY channel
             data = []
@@ -766,12 +852,12 @@ if len(libanims):
             anim_ry = store_single_channel_animation(srcid, anim, data, tag='_rotateY', param_name='ANGLE')
             new_anims.append(anim_ry)
 
-            # rotateZ channel
+            # rotateX channel
             data = []
             for i in range(len(floats)):
-                if i % 3 == 2: data.append(floats[i])
-            anim_rz = store_single_channel_animation(srcid, anim, data, tag='_rotateZ', param_name='ANGLE')
-            new_anims.append(anim_rz)
+                if i % 3 == 0: data.append(floats[i])
+            anim_rx = store_single_channel_animation(srcid, anim, data, tag='_rotateX', param_name='ANGLE')
+            new_anims.append(anim_rx)
 
             # translateX/Y/Z channel
             floats = []
@@ -793,6 +879,7 @@ if len(libanims):
 
     for a in new_anims:
         libanim.appendChild(a)
+        libanim.appendChild(dom.createTextNode('\n\n'))
 
 out = open(outfile, 'w')
 #out.write(dom.toprettyxml())
