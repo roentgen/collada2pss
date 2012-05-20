@@ -22,7 +22,7 @@ import xml.dom.minidom
 from xml.dom.minidom import parse
 
 def options (v):
-    options.do_bind_shape = False
+    options.do_bind_shape = True
      
 
 def load_matrix4x4(str) :
@@ -536,9 +536,9 @@ def traverse(first_tag):
         traverse_node(n)
 
 def joint_handler (n) :
-    print ('found joint')
+    print ('found joint: id:', n.attributes['id'].value)
     mat = n.getElementsByTagName("matrix")[0]
-    print ('found joint matrix %s' % mat.firstChild.nodeValue)
+#    print ('found joint matrix %s' % mat.firstChild.nodeValue)
     m = load_matrix4x4(mat.firstChild.nodeValue)[0]
     trans = m.to_translation()
     scale = m.to_scale()
@@ -736,12 +736,17 @@ def store_single_channel_animation(id, org, data, tag='_rotateX', param_name='AN
 #    print ('last:', anim.toprettyxml())
     return anim
 
-controllers = []
+# controllers: dictionaly of controllers which have skeleton
+controllers = {}
 def controller_handler(c):
-    def controller():
-        pass
+    id = c.attributes['id'].value
+    controller = controllers.get(id)
+    # ignore if the controller does not have a skeleton
+    print ('controller_handler: id:', id)
+    print ('controller_handler: controller:', controller)
+    if controller == None:
+        return  
     controller.bind_shape_matrix = Matrix.Identity(4)
-    controller.id = c.attributes['id']
     binds = c.getElementsByTagName('bind_shape_matrix')
     if len(binds) : 
         m = load_matrix4x4(binds[0].childNodes[0].nodeValue)[0]
@@ -753,8 +758,17 @@ def controller_handler(c):
         inv_scale[2][2] = scale[2]
         m = inv_scale * m
         controller.bind_shape_matrix = m
-        
     
+    # get bone name array
+    controller.bone_names = []
+    name_array_nodelist = c.getElementsByTagName('Name_array')
+    print ('name_array:', name_array_nodelist)
+    if len(name_array_nodelist):
+        nms = re.compile('\s').split(name_array_nodelist[0].childNodes[0].nodeValue)
+        for n in nms:
+            if n != '':
+                controller.bone_names.append(n)
+
     # find pose matricis to be use as bone-offset-matricis
     poses = []
     recipes = [{'rule':'input[semantic=INV_BIND_MATRIX]', 'func': lambda x: poses.append(x.attributes['source'].value.strip('#'))}]
@@ -763,23 +777,69 @@ def controller_handler(c):
     for p in poses:
         recipes = [{'rule':'source[id=%s] float_array' % p, 'func': lambda x: boneoffsets.append(x)}]
         do_recipe(recipes, c)
-    matricis = []
-    print('bind_shape_matrix:\n', controller.bind_shape_matrix)
-    inv_binds = controller.bind_shape_matrix.inverted()
-    for b in boneoffsets:
-        matricis.extend(load_matrix4x4(b.childNodes[0].nodeValue))
-        num = len(matricis)
-        for i in range(num):
-            # fixed matrix that converts a local system to the world system.
-            #      matrix = bind^-1 * pose * bone
-            # multiplying each bone local matrix will be done runtime.
-            print ('pose:\n', matricis[i])
-            matricis[i] = matricis[i] * inv_scale
-            print ('inv_binds:\n', inv_binds)
-            print ('matrix:\n', matricis[i])
-        b.childNodes[0].nodeValue = store_matrix4x4(matricis)
+    if len(boneoffsets) == 0:
+        return
+    matricis = load_matrix4x4(boneoffsets[0].childNodes[0].nodeValue)
+
+    idx = 0
+    for b in controller.bone_names:
+        print ('bonename:', b)
+#        def add_rot90x(x):
+#            (v, q, s) = x.decompose()
+##            rot90 = Matrix.Rotation(math.radians(-90), 4, 'X')
+#            rot90 = Matrix() # dry run
+#            return Matrix.Translation(v) * q.to_matrix().to_4x4() * rot90
+
+        # name_array is name ? or id ?
+        name = b
+        # lookup parent of 'name'
+#        parents = []
+#        recipes = [{'rule':'node [id=%s]' % name, 'func': lambda x: parents.append(x.parentNode)}]
+#        do_recipe(recipes, controller.skeleton_root)
+#        parent = parents[0]
+#        # resolve parent index
+#        parent_idx = -1
+#        if parent:
+#            parent_name = parent.attributes['id'].value
+#            pidx = 0
+#            for n in controller.bone_names:
+#                if n == parent_name:
+#                    parent_idx = pidx
+#                    break
+#                pidx += 1
+#            print ('parent id:%(id)s idx:%(idx)d' % {'id':parent.attributes['id'].value, 'idx':parent_idx}) 
+#        else:
+#            print ('Error: controller:%s: skeleton-root does not found' % id)
+
+#        print ('cur: %(a)d parent:%(b)d' % {'a':idx, 'b':parent_idx})
+#        print ('prev:', matricis[idx])
+#        if parent_idx != -1:
+#            lm = matricis[parent_idx] * matricis[idx].inverted()
+#            matricis[idx] = *matricis[parent_idx] * add_rot90x(lm)).inverted()
+#        else:
+#            lm = matricis[idx].inverted()
+#            matricis[idx] = add_rot90x(lm).inverted()
+        im = matricis[idx].inverted()
+        matricis[idx] = (Matrix.Rotation(math.radians(-90), 4, 'X') * im).inverted()
+#        print ('aftr:', matricis[idx])
+        idx += 1
+    boneoffsets[0].childNodes[0].nodeValue = store_matrix4x4(matricis)
+
+#    print('bind_shape_matrix:\n', controller.bind_shape_matrix)
+#    inv_binds = controller.bind_shape_matrix.inverted()
+#    for b in boneoffsets:
+#        matricis.extend(load_matrix4x4(b.childNodes[0].nodeValue))
+#        num = len(matricis)
+#        for i in range(num):
+#            # fixed matrix that converts a local system to the world system.
+#            #      matrix = bind^-1 * pose * bone
+#            # multiplying each bone local matrix will be done runtime.
+#            print ('pose:\n', matricis[i])
+#            matricis[i] = matricis[i] * inv_scale
+#            print ('inv_binds:\n', inv_binds)
+#            print ('matrix:\n', matricis[i])
+#        b.childNodes[0].nodeValue = store_matrix4x4(matricis)
         
-    controllers.append(controller)
     return 
     
 
@@ -788,6 +848,67 @@ dom = parse(infile)
 
 # fix document errors
 document_fix(dom)
+
+# if Z_UP, then add the node that makes the axis Y_UP
+if dom.getElementsByTagName('asset')[0].getElementsByTagName('up_axis')[0].childNodes[0].nodeValue == 'Z_UP':
+    armatures = []
+    recipes = [{'rule':'visual_scene > node[type=NODE] > node[type=JOINT]', 'func':lambda x: armatures.append(x.parentNode)}]
+    do_recipe(recipes, dom)
+    for a in armatures:
+        p = a.parentNode
+        id = '__axis__' + a.attributes['id'].value
+        r = dom.createElement('node');
+        r.setAttribute('type', 'NODE')
+        r.setAttribute('id', id)
+        rot = dom.createElement('rotate')
+        rot.setAttribute('sid', 'rotateX')
+        rot.appendChild(dom.createTextNode('1 0 0 -90'))
+        r.appendChild(rot)
+        r.appendChild(dom.createTextNode('\n'))
+        p.replaceChild(r, a)
+        r.appendChild(a)
+
+# makes a map of controller and bone
+controller_instances = []
+recipes = [{'rule':'instance_controller', 'func':lambda x: controller_instances.append(x)}]
+do_recipe(recipes, dom)
+for c in controller_instances:
+    
+    def controller():
+        pass
+
+    id = c.attributes['url'].value.strip('#')
+    controller.id = id
+    # instance_controller may have many skeleton nodes, but blender's has only root node
+    skeletons = c.getElementsByTagName('skeleton')
+    if len(skeletons):
+        skeleton = skeletons[-1]
+        skeleton_id = skeleton.childNodes[0].nodeValue.strip('#')
+        controller.skeleton_id = skeleton_id
+    else:
+        controller.skeleton_id = None
+        controller.skeleton_root = None
+    if controller.skeleton_id != None:
+        # find skeleton root
+        skels = []
+
+#        print ('skeleton id:', controller.skeleton_id)
+        recipes = [{'rule':'node[id=%s]' % controller.skeleton_id, 'func':lambda x: skels.append(x)}]
+        do_recipe(recipes, dom)
+        if len(skels) == 0:
+            print ('Error: skeleton was used but not defined: Did not you export collada in wrong layer? Blender may do not export objects in other layers.')
+
+        for s in skels:
+            p = s.parentNode
+            skeleton_root = None
+            while p.tagName == 'node':
+                skeleton_root = p
+                p = p.parentNode
+            controller.skeleton_root = skeleton_root
+        print('controller instance: id:', id)
+        print('controller instance: skelton:', controller.skeleton_id)
+        controllers.update({id:controller})
+
 
 if options.do_bind_shape:
     ctrls = []
