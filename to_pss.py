@@ -13,6 +13,7 @@
 # changes:
 # May 12, 2012 ver 0.1 [Beta Release]
 # May 15, 2012 fixed an axis-order to rotation of bone
+# May 20, 2012 fixed a problem that bone's tree will be broken
 #
 import os
 import re
