@@ -13,7 +13,7 @@
 # changes:
 # May 12, 2012 ver 0.1 [Beta Release]
 # May 15, 2012 fixed an axis-order to rotation of bone
-# May 20, 2012 fixed a problem that bone's tree will be broken
+# May 20, 2012 fixed a problem that bone's tree will be broken (ver 0.5)
 #
 import os
 import re
@@ -486,7 +486,7 @@ def document_fix(dom):
         libfx.appendChild(fx)
             
 
-version = 0.1
+version = 0.5
 argv_ = re.compile('[# ]+').split(os.getenv('args'))
 argv = []
 for i in argv_:
