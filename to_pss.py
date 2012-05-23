@@ -21,10 +21,23 @@ from mathutils import *
 import math
 import xml.dom.minidom
 from xml.dom.minidom import parse
+import bpy
 
 def options (v):
+    options.infile = None
+    options.outfile = None
     options.do_bind_shape = True
-     
+    options.anim_from_blend = False
+    vc = len(v)
+    for i in range(0, vc):
+        if v[i] == '--src' or v[i] == '-s':
+            i += 1
+            options.blend = v[i]
+            options.anim_from_blend = True
+        elif options.infile == None:
+            options.infile = v[i]
+        elif options.outfile == None:
+            options.outfile = v[i]
 
 def load_matrix4x4(str) :
     ms = []
@@ -498,12 +511,16 @@ argc = len(argv)
 
 if (argc < 2):
     print('to_pss usage: %s input output' % argv[0])
-    exit()
+    bpy.ops.wm.quit_blender()
 
-options(argv)
-
-infile = argv[0]
-outfile = argv[1]
+try:
+    options(argv)
+except:
+    print('arguments error')
+    bpy.ops.wm.quit_blender()
+    
+infile = options.infile
+outfile = options.outfile
 
 def vec3_to_str(v):
     return '%(x)f %(y)f %(z)f' % {'x':v[0], 'y':v[1], 'z':v[2]}
