@@ -15,6 +15,7 @@
 # May 15, 2012 fixed an axis-order to rotation of bone
 # May 20, 2012 fixed a problem that bone's tree will be broken (ver 0.5)
 #
+
 import os
 import re
 from mathutils import *
@@ -29,6 +30,14 @@ def options (v):
     options.do_bind_shape = True
     options.anim_from_blend = False
     vc = len(v)
+    if vc == 0:
+        if bpy.data.filepath != '':
+            options.automode = True
+            options.anim_from_blend = True
+            options.blend = bpy.data.filepath
+            options.infile = bpy.app.tempdir + options.blend
+            options.outfile = bpy.path.ensure_ext(options.blend, '.pss.dae')
+        
     for i in range(0, vc):
         if v[i] == '--src' or v[i] == '-s':
             i += 1
@@ -500,18 +509,23 @@ def document_fix(dom):
             
 
 version = 0.5
-argv_ = re.compile('[# ]+').split(os.getenv('args'))
-argv = []
-for i in argv_:
-    if i != '':
-        argv.append(i)
+args_env = os.getenv('args')
+if args_env == None:
+    print('environment variable, args missing: enter automode')
+    options([])
+else:
+    argv_ = re.compile('[# ]+').split(os.getenv('args'))
+    argv = []
+    for i in argv_:
+        if i != '':
+            argv.append(i)
 
-print(argv)
-argc = len(argv)
+    print(argv)
+    argc = len(argv)
 
-if (argc < 2):
-    print('to_pss usage: %s input output' % argv[0])
-    bpy.ops.wm.quit_blender()
+    if (argc < 2):
+        print('to_pss usage: %s input output' % argv[0])
+        bpy.ops.wm.quit_blender()
 
 try:
     options(argv)
